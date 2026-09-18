@@ -81,10 +81,13 @@ class KtuvitPlugin : Plugin() {
         addLabel("Email")
         val emailField = addField(KtuvitStore.email)
 
-        addLabel("Hashed password")
-        val passwordField = addField(KtuvitStore.hashedPassword, password = true)
+        addLabel("Password")
+        val passwordField = addField(KtuvitStore.password, password = true)
 
-        addLabel("Login cookie")
+        addLabel("Encrypted password (optional, only if you have it)")
+        val hashedField = addField(KtuvitStore.hashedPassword, password = true)
+
+        addLabel("Login cookie (optional, refreshed automatically)")
         val cookieField = addField(KtuvitStore.cookie)
 
         addLabel("Diagnostics: title  (add  |season|episode  for a series)")
@@ -96,19 +99,27 @@ class KtuvitPlugin : Plugin() {
             .setTitle("Ktuvit")
             .setView(scroll)
             .setPositiveButton("Save") { _, _ ->
-                KtuvitStore.email = emailField.text.toString()
-                KtuvitStore.hashedPassword = passwordField.text.toString()
-                KtuvitStore.cookie = cookieField.text.toString()
+                saveFields(emailField, passwordField, hashedField, cookieField)
                 verifyCredentials(context)
             }
             .setNeutralButton("Test") { _, _ ->
-                KtuvitStore.email = emailField.text.toString()
-                KtuvitStore.hashedPassword = passwordField.text.toString()
-                KtuvitStore.cookie = cookieField.text.toString()
+                saveFields(emailField, passwordField, hashedField, cookieField)
                 runDiagnostics(context, testField.text.toString())
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun saveFields(
+        emailField: EditText,
+        passwordField: EditText,
+        hashedField: EditText,
+        cookieField: EditText,
+    ) {
+        KtuvitStore.email = emailField.text.toString()
+        KtuvitStore.password = passwordField.text.toString()
+        KtuvitStore.hashedPassword = hashedField.text.toString()
+        KtuvitStore.cookie = cookieField.text.toString()
     }
 
     /** Accepts "Breaking Bad|2|5" for a series, or just a title for a movie. */
@@ -153,12 +164,17 @@ class KtuvitPlugin : Plugin() {
     /** Logs in once right after saving so a wrong value is caught immediately. */
     private fun verifyCredentials(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
+            // With credentials on hand, always log in for real so a wrong password
+            // is caught now and not in a month when the saved cookie expires.
+            val hasCredentials = KtuvitStore.email.isNotBlank() &&
+                (KtuvitStore.password.isNotBlank() || KtuvitStore.hashedPassword.isNotBlank())
+
             val message = try {
-                val cookie = KtuvitStore.resolveCookie(forceRefresh = KtuvitStore.cookie.isBlank())
-                if (cookie.isNullOrBlank()) {
-                    "Ktuvit: login failed, check the email and hashed password"
-                } else {
-                    "Ktuvit: connected"
+                val cookie = KtuvitStore.resolveCookie(forceRefresh = hasCredentials)
+                when {
+                    !cookie.isNullOrBlank() && hasCredentials -> "Ktuvit: logged in"
+                    !cookie.isNullOrBlank() -> "Ktuvit: connected with the cookie"
+                    else -> "Ktuvit: login failed, check the email and password"
                 }
             } catch (e: Throwable) {
                 Log.e(TAG, "Login check failed", e)
