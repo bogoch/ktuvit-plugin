@@ -23,22 +23,27 @@ class KtuvitPlugin : Plugin() {
         const val TAG = "KtuvitSubtitles"
     }
 
+    /**
+     * Plugins are loaded on a background thread, so nothing here may touch the UI -
+     * a Toast from here throws and the whole plugin fails to load. The injection
+     * result is kept in Injector.lastResult and shown by the diagnostics dialog.
+     */
     override fun load(context: Context) {
-        KtuvitStore.init(context)
-
-        val message = when (val result = Injector.inject(KtuvitApi())) {
-            is Injector.Result.Injected -> "Ktuvit: registered"
-            is Injector.Result.AlreadyPresent -> "Ktuvit: already registered"
-            is Injector.Result.Failed -> {
-                Log.e(TAG, "Injection failed: ${result.reason}", result.error)
-                "Ktuvit: injection failed - ${result.reason}"
-            }
-        }
-
-        Log.i(TAG, message)
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-
         openSettings = { ctx -> showSettings(ctx) }
+
+        try {
+            KtuvitStore.init(context)
+
+            when (val result = Injector.inject(KtuvitApi())) {
+                is Injector.Result.Injected -> Log.i(TAG, "Registered as a subtitle provider")
+                is Injector.Result.AlreadyPresent -> Log.i(TAG, "Already registered")
+                is Injector.Result.Failed ->
+                    Log.e(TAG, "Injection failed: ${result.reason}", result.error)
+            }
+        } catch (e: Throwable) {
+            // Never let a failure here stop the plugin from loading.
+            Log.e(TAG, "Load failed", e)
+        }
     }
 
     private fun showSettings(context: Context) {

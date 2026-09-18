@@ -27,6 +27,14 @@ object Injector {
     }
 
     /**
+     * The outcome of the last injection attempt, kept so the diagnostics dialog can
+     * show it. Plugins load on a background thread, where nothing may touch the UI.
+     */
+    @Volatile
+    var lastResult: Result? = null
+        private set
+
+    /**
      * Reads the live provider list back out of the app. This is the only reliable
      * answer to "is Ktuvit actually registered right now".
      */
@@ -43,7 +51,10 @@ object Injector {
         }
     }
 
-    fun inject(api: SubtitleAPI): Result {
+    fun inject(api: SubtitleAPI): Result =
+        attempt(api).also { lastResult = it }
+
+    private fun attempt(api: SubtitleAPI): Result {
         return try {
             val field = AccountManager::class.java.getDeclaredField(FIELD_NAME)
             field.isAccessible = true

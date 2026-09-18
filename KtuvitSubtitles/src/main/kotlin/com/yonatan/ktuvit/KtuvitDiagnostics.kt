@@ -11,6 +11,14 @@ object KtuvitDiagnostics {
     suspend fun report(title: String, season: Int?, episode: Int?): String {
         val lines = mutableListOf<String>()
 
+        // 0. What happened when the plugin loaded
+        lines += when (val last = Injector.lastResult) {
+            is Injector.Result.Injected -> "0. load: injected"
+            is Injector.Result.AlreadyPresent -> "0. load: already present"
+            is Injector.Result.Failed -> "0. load: FAILED - ${last.reason}"
+            null -> "0. load: injection never ran"
+        }
+
         // 1. Is the provider actually registered in the app right now?
         val providers = Injector.currentProviders()
         lines += if (providers.isEmpty()) {
