@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.ktuvit.me/favicon.ico",
-        "fileHash": "sha256-59962e10840d24665458ddc771ef45a1a0b5603c33cdd95d4bbed0478a33d0bf",
+        "fileHash": "sha256-0651869f25ba87f89f602b113997593d41d4e0c432a0b4b7d875ec19bd44d31f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/bogoch/ktuvit-plugin",
-        "fileSize": 37849,
+        "fileSize": 37647,
         "status": 3,
         "authors": [
             "yonatan"
@@ -13,7 +13,7 @@
             "Movie",
             "TvSeries"
         ],
-        "version": 3,
+        "version": 4,
         "internalName": "KtuvitSubtitles",
         "description": "\u05db\u05ea\u05d5\u05d1\u05d9\u05d5\u05ea \u05d1\u05e2\u05d1\u05e8\u05d9\u05ea \u05de-Ktuvit",
         "url": "https://raw.githubusercontent.com/bogoch/ktuvit-plugin/builds/KtuvitSubtitles.cs3",
