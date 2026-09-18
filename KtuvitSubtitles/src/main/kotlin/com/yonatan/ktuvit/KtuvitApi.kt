@@ -1,6 +1,5 @@
 package com.yonatan.ktuvit
 
-import com.lagradost.cloudstream3.AllLanguagesName
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.subtitles.AbstractSubtitleEntities.SubtitleEntity
 import com.lagradost.cloudstream3.subtitles.AbstractSubtitleEntities.SubtitleSearch
@@ -30,14 +29,10 @@ class KtuvitApi : SubtitleAPI() {
     }
 
     override suspend fun search(auth: AuthData?, query: SubtitleSearch): List<SubtitleEntity>? {
-        val requestedLanguage = query.lang
-        if (!requestedLanguage.isNullOrBlank() &&
-            requestedLanguage != AllLanguagesName &&
-            !requestedLanguage.startsWith(LANGUAGE, ignoreCase = true)
-        ) {
-            return emptyList()
-        }
-
+        // No language filter on purpose. The player passes whatever language is
+        // selected in the subtitle dialog, and filtering on it made this provider
+        // silently return nothing whenever that was not Hebrew. Ktuvit is Hebrew
+        // only, and every entity below is tagged "he", so the UI labels them right.
         val title = query.query.trim()
         if (title.isBlank()) return emptyList()
 
