@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
@@ -25,22 +26,17 @@ class KtuvitPlugin : Plugin() {
     override fun load(context: Context) {
         KtuvitStore.init(context)
 
-        when (val result = Injector.inject(KtuvitApi())) {
-            is Injector.Result.Injected ->
-                Log.i(TAG, "Ktuvit registered as a subtitle provider")
-
-            is Injector.Result.AlreadyPresent ->
-                Log.i(TAG, "Ktuvit was already registered")
-
+        val message = when (val result = Injector.inject(KtuvitApi())) {
+            is Injector.Result.Injected -> "Ktuvit: registered"
+            is Injector.Result.AlreadyPresent -> "Ktuvit: already registered"
             is Injector.Result.Failed -> {
                 Log.e(TAG, "Injection failed: ${result.reason}", result.error)
-                Toast.makeText(
-                    context,
-                    "Ktuvit: injection failed - ${result.reason}",
-                    Toast.LENGTH_LONG,
-                ).show()
+                "Ktuvit: injection failed - ${result.reason}"
             }
         }
+
+        Log.i(TAG, message)
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
 
         openSettings = { ctx -> showSettings(ctx) }
     }
@@ -83,20 +79,70 @@ class KtuvitPlugin : Plugin() {
         addLabel("Hashed password")
         val passwordField = addField(KtuvitStore.hashedPassword, password = true)
 
-        addLabel("Login cookie (optional, skips the login call)")
+        addLabel("Login cookie")
         val cookieField = addField(KtuvitStore.cookie)
+
+        addLabel("Diagnostics: title  (add  |season|episode  for a series)")
+        val testField = addField("")
+
+        val scroll = ScrollView(context).apply { addView(layout) }
 
         AlertDialog.Builder(context)
             .setTitle("Ktuvit")
-            .setView(layout)
+            .setView(scroll)
             .setPositiveButton("Save") { _, _ ->
                 KtuvitStore.email = emailField.text.toString()
                 KtuvitStore.hashedPassword = passwordField.text.toString()
                 KtuvitStore.cookie = cookieField.text.toString()
                 verifyCredentials(context)
             }
+            .setNeutralButton("Test") { _, _ ->
+                KtuvitStore.email = emailField.text.toString()
+                KtuvitStore.hashedPassword = passwordField.text.toString()
+                KtuvitStore.cookie = cookieField.text.toString()
+                runDiagnostics(context, testField.text.toString())
+            }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /** Accepts "Breaking Bad|2|5" for a series, or just a title for a movie. */
+    private fun runDiagnostics(context: Context, input: String) {
+        val parts = input.split("|")
+        val title = parts.getOrNull(0)?.trim().orEmpty()
+        if (title.isBlank()) {
+            Toast.makeText(context, "Ktuvit: enter a title first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val season = parts.getOrNull(1)?.trim()?.toIntOrNull()
+        val episode = parts.getOrNull(2)?.trim()?.toIntOrNull()
+
+        Toast.makeText(context, "Ktuvit: running diagnostics...", Toast.LENGTH_SHORT).show()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val report = try {
+                KtuvitDiagnostics.report(title, season, episode)
+            } catch (e: Throwable) {
+                Log.e(TAG, "Diagnostics failed", e)
+                "Unexpected failure: ${e.javaClass.simpleName}: ${e.message}"
+            }
+
+            Log.i(TAG, report)
+
+            withContext(Dispatchers.Main) {
+                val view = TextView(context).apply {
+                    text = report
+                    setTextIsSelectable(true)
+                    val padding = (16 * context.resources.displayMetrics.density).toInt()
+                    setPadding(padding, padding, padding, padding)
+                }
+                AlertDialog.Builder(context)
+                    .setTitle("Ktuvit diagnostics")
+                    .setView(ScrollView(context).apply { addView(view) })
+                    .setPositiveButton("Close", null)
+                    .show()
+            }
+        }
     }
 
     /** Logs in once right after saving so a wrong value is caught immediately. */

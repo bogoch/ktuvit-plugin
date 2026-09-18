@@ -26,6 +26,23 @@ object Injector {
         data class Failed(val reason: String, val error: Throwable? = null) : Result()
     }
 
+    /**
+     * Reads the live provider list back out of the app. This is the only reliable
+     * answer to "is Ktuvit actually registered right now".
+     */
+    fun currentProviders(): List<String> {
+        return try {
+            val field = AccountManager::class.java.getDeclaredField(FIELD_NAME)
+            field.isAccessible = true
+            (field.get(null) as? Array<*>)
+                ?.filterIsInstance<SubtitleRepo>()
+                ?.map { it.idPrefix }
+                ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
     fun inject(api: SubtitleAPI): Result {
         return try {
             val field = AccountManager::class.java.getDeclaredField(FIELD_NAME)
