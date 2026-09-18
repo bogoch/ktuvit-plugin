@@ -1,0 +1,8 @@
+{
+    "name": "Ktuvit",
+    "description": "Hebrew subtitles from ktuvit.me",
+    "manifestVersion": 1,
+    "pluginLists": [
+        "https://raw.githubusercontent.com/bogoch/ktuvit-plugin/builds/plugins.json"
+    ]
+}
